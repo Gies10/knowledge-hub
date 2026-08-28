@@ -1,11 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import { BacklinksPanel } from './components/BacklinksPanel';
 import { Editor } from './components/Editor';
+import { GraphView } from './components/GraphView';
 import { PreviewPane } from './components/PreviewPane';
 import { Sidebar } from './components/Sidebar';
 import { useNotes } from './hooks/useNotes';
 
 type Mode = 'edit' | 'preview';
+type ViewMode = 'note' | 'graph';
 
 export default function App() {
   const {
@@ -27,6 +29,7 @@ export default function App() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('edit');
+  const [viewMode, setViewMode] = useState<ViewMode>('note');
 
   const selectedNote = useMemo(
     () => notes.find((n) => n.id === selectedId) ?? null,
@@ -84,6 +87,26 @@ export default function App() {
     }
   }, [selectedNote, removeNote]);
 
+  const handleOpenNoteFromGraph = useCallback(
+    (id: string) => {
+      setSelectedId(id);
+      setViewMode('note');
+      setMode('edit');
+    },
+    [setSelectedId],
+  );
+
+  const handleLinkNotes = useCallback(
+    (sourceId: string, targetId: string) => {
+      const source = notes.find((n) => n.id === sourceId);
+      const target = notes.find((n) => n.id === targetId);
+      if (!source || !target) return;
+      const separator = source.content.trim().length > 0 ? '\n\n' : '';
+      updateNote(sourceId, { content: `${source.content}${separator}[[${target.title}]]` });
+    },
+    [notes, updateNote],
+  );
+
   return (
     <div className="app">
       <Sidebar
@@ -113,7 +136,17 @@ export default function App() {
             ☰
           </button>
 
-          {selectedNote ? (
+          <button
+            type="button"
+            className={viewMode === 'graph' ? 'mode-button active' : 'mode-button'}
+            onClick={() => setViewMode((v) => (v === 'graph' ? 'note' : 'graph'))}
+          >
+            {viewMode === 'graph' ? 'Notes' : 'Graph'}
+          </button>
+
+          {viewMode === 'graph' ? (
+            <span className="app-title">Knowledge Graph</span>
+          ) : selectedNote ? (
             <>
               <input
                 className="title-input"
@@ -148,32 +181,48 @@ export default function App() {
 
         {!loaded ? (
           <div className="empty-state">Loading…</div>
-        ) : !selectedNote ? (
-          <div className="empty-state">
-            <p>No note selected.</p>
-            <button type="button" className="new-note-button" onClick={handleCreateNote}>
-              + Create your first note
-            </button>
-          </div>
         ) : (
           <>
-            {mode === 'edit' ? (
-              <Editor
-                noteId={selectedNote.id}
-                content={selectedNote.content}
-                onChange={(content) => updateNote(selectedNote.id, { content })}
-                onNavigate={handleNavigate}
-                getTitles={getTitles}
+            <div className={viewMode === 'note' ? 'view-pane' : 'view-pane hidden'}>
+              {!selectedNote ? (
+                <div className="empty-state">
+                  <p>No note selected.</p>
+                  <button type="button" className="new-note-button" onClick={handleCreateNote}>
+                    + Create your first note
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {mode === 'edit' ? (
+                    <Editor
+                      noteId={selectedNote.id}
+                      content={selectedNote.content}
+                      onChange={(content) => updateNote(selectedNote.id, { content })}
+                      onNavigate={handleNavigate}
+                      getTitles={getTitles}
+                    />
+                  ) : (
+                    <PreviewPane content={selectedNote.content} onNavigate={handleNavigate} />
+                  )}
+                  <BacklinksPanel
+                    noteId={selectedNote.id}
+                    notes={notes}
+                    graph={graph}
+                    onSelect={handleSelectNote}
+                  />
+                </>
+              )}
+            </div>
+
+            <div className={viewMode === 'graph' ? 'view-pane' : 'view-pane hidden'}>
+              <GraphView
+                notes={notes}
+                graph={graph}
+                onOpenNote={handleOpenNoteFromGraph}
+                onCreateNoteAt={createNote}
+                onLinkNotes={handleLinkNotes}
               />
-            ) : (
-              <PreviewPane content={selectedNote.content} onNavigate={handleNavigate} />
-            )}
-            <BacklinksPanel
-              noteId={selectedNote.id}
-              notes={notes}
-              graph={graph}
-              onSelect={handleSelectNote}
-            />
+            </div>
           </>
         )}
       </main>

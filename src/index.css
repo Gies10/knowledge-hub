@@ -283,6 +283,17 @@ input {
   color: var(--accent-contrast);
 }
 
+.view-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.view-pane.hidden {
+  display: none;
+}
+
 .editor-host,
 .preview-pane {
   flex: 1;
@@ -324,6 +335,77 @@ input {
   display: block;
   padding: 10px;
   overflow-x: auto;
+}
+
+.graph-view {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  touch-action: none;
+  background: var(--bg);
+  cursor: grab;
+}
+
+.graph-view svg {
+  display: block;
+}
+
+.graph-hint {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 1;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  padding: 4px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.graph-edge {
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.graph-node {
+  cursor: pointer;
+}
+
+.graph-node-circle {
+  fill: var(--accent);
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+.graph-node-circle.dragging {
+  opacity: 0.85;
+}
+
+.graph-node-circle.link-target {
+  stroke: var(--danger);
+  stroke-width: 3;
+}
+
+.graph-node-label {
+  text-anchor: middle;
+  font-size: 11px;
+  fill: var(--text);
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+}
+
+.graph-create-input {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  padding: 6px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
 
 .empty-state {
