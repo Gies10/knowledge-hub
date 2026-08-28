@@ -85,6 +85,18 @@ export function useNotes() {
     [],
   );
 
+  /** Adopt a note that came from a sync pull - upserts local storage + state directly. */
+  const applyRemoteNote = useCallback(async (note: Note) => {
+    await putNote(note);
+    setNotes((prev) => {
+      const idx = prev.findIndex((n) => n.id === note.id);
+      if (idx === -1) return [...prev, note];
+      const next = [...prev];
+      next[idx] = note;
+      return next;
+    });
+  }, []);
+
   const findOrCreateByTitle = useCallback(
     async (title: string): Promise<Note> => {
       const normalized = title.trim().toLowerCase();
@@ -108,5 +120,6 @@ export function useNotes() {
     updateNote,
     removeNote,
     findOrCreateByTitle,
+    applyRemoteNote,
   };
 }

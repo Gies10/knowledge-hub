@@ -6,9 +6,11 @@ import { PreviewPane } from './components/PreviewPane';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { QueryView } from './components/QueryView';
 import { Sidebar } from './components/Sidebar';
+import { SyncSettings } from './components/SyncSettings';
 import { TypedRelationsPanel } from './components/TypedRelationsPanel';
 import { UnlinkedMentionsPanel } from './components/UnlinkedMentionsPanel';
 import { useNotes } from './hooks/useNotes';
+import { useSync } from './hooks/useSync';
 import { buildRelationBacklinks } from './lib/relations';
 import { linkAllOccurrences } from './lib/unlinkedMentions';
 
@@ -29,13 +31,17 @@ export default function App() {
     updateNote,
     removeNote,
     findOrCreateByTitle,
+    applyRemoteNote,
   } = useNotes();
+
+  const sync = useSync({ notes, applyRemoteNote, removeNoteLocally: removeNote });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('edit');
   const [viewMode, setViewMode] = useState<ViewMode>('note');
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
 
   const selectedNote = useMemo(
     () => notes.find((n) => n.id === selectedId) ?? null,
@@ -90,9 +96,10 @@ export default function App() {
   const handleDelete = useCallback(() => {
     if (!selectedNote) return;
     if (window.confirm(`Delete "${selectedNote.title}"? This can't be undone.`)) {
-      void removeNote(selectedNote.id);
+      const id = selectedNote.id;
+      void removeNote(id).then(() => sync.notifyNoteDeleted(id));
     }
-  }, [selectedNote, removeNote]);
+  }, [selectedNote, removeNote, sync]);
 
   const handleOpenNoteFromGraph = useCallback(
     (id: string) => {
@@ -212,6 +219,17 @@ export default function App() {
           ) : (
             <span className="app-title">Knowledge Hub</span>
           )}
+
+          <button
+            type="button"
+            className="icon-button sync-button"
+            onClick={() => setSyncModalOpen(true)}
+            aria-label="Sync settings"
+            title={sync.connected ? `Synced with ${sync.owner}/${sync.repo}` : 'Set up sync'}
+          >
+            <span className={`sync-dot sync-dot-${sync.connected ? sync.status : 'disconnected'}`} />
+            ⇅
+          </button>
         </div>
 
         {!loaded ? (
@@ -282,6 +300,8 @@ export default function App() {
           </>
         )}
       </main>
+
+      {syncModalOpen && <SyncSettings sync={sync} onClose={() => setSyncModalOpen(false)} />}
     </div>
   );
 }
