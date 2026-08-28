@@ -16,8 +16,10 @@ export function useNotes() {
 
   useEffect(() => {
     let cancelled = false;
-    void getAllNotes().then((loadedNotes) => {
+    void getAllNotes().then((raw) => {
       if (cancelled) return;
+      // Notes saved before properties existed won't have the field.
+      const loadedNotes = raw.map((n) => ({ ...n, properties: n.properties ?? {} }));
       setNotes(loadedNotes);
       setLoaded(true);
       if (loadedNotes.length > 0) {
@@ -53,6 +55,7 @@ export function useNotes() {
       id: makeId(),
       title: title.trim() || 'Untitled',
       content,
+      properties: {},
       createdAt: now,
       updatedAt: now,
     };
@@ -63,7 +66,7 @@ export function useNotes() {
   }, []);
 
   const updateNote = useCallback(
-    (id: string, patch: Partial<Pick<Note, 'title' | 'content'>>) => {
+    (id: string, patch: Partial<Pick<Note, 'title' | 'content' | 'properties'>>) => {
       const current = notes.find((n) => n.id === id);
       if (!current) return;
       const updated: Note = { ...current, ...patch, updatedAt: Date.now() };

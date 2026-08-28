@@ -3,11 +3,17 @@ import { BacklinksPanel } from './components/BacklinksPanel';
 import { Editor } from './components/Editor';
 import { GraphView } from './components/GraphView';
 import { PreviewPane } from './components/PreviewPane';
+import { PropertiesPanel } from './components/PropertiesPanel';
+import { QueryView } from './components/QueryView';
 import { Sidebar } from './components/Sidebar';
+import { TypedRelationsPanel } from './components/TypedRelationsPanel';
+import { UnlinkedMentionsPanel } from './components/UnlinkedMentionsPanel';
 import { useNotes } from './hooks/useNotes';
+import { buildRelationBacklinks } from './lib/relations';
+import { linkAllOccurrences } from './lib/unlinkedMentions';
 
 type Mode = 'edit' | 'preview';
-type ViewMode = 'note' | 'graph';
+type ViewMode = 'note' | 'graph' | 'query';
 
 export default function App() {
   const {
@@ -54,6 +60,7 @@ export default function App() {
 
   const allTitles = useMemo(() => notes.map((n) => n.title), [notes]);
   const getTitles = useCallback(() => allTitles, [allTitles]);
+  const relationBacklinks = useMemo(() => buildRelationBacklinks(notes), [notes]);
 
   const handleNavigate = useCallback(
     async (title: string) => {
@@ -107,6 +114,16 @@ export default function App() {
     [notes, updateNote],
   );
 
+  const handleLinkAllMentions = useCallback(
+    (sourceId: string) => {
+      if (!selectedNote) return;
+      const source = notes.find((n) => n.id === sourceId);
+      if (!source) return;
+      updateNote(sourceId, { content: linkAllOccurrences(source.content, selectedNote.title) });
+    },
+    [notes, selectedNote, updateNote],
+  );
+
   return (
     <div className="app">
       <Sidebar
@@ -136,16 +153,34 @@ export default function App() {
             ☰
           </button>
 
-          <button
-            type="button"
-            className={viewMode === 'graph' ? 'mode-button active' : 'mode-button'}
-            onClick={() => setViewMode((v) => (v === 'graph' ? 'note' : 'graph'))}
-          >
-            {viewMode === 'graph' ? 'Notes' : 'Graph'}
-          </button>
+          <div className="view-switcher">
+            <button
+              type="button"
+              className={viewMode === 'note' ? 'mode-button active' : 'mode-button'}
+              onClick={() => setViewMode('note')}
+            >
+              Notes
+            </button>
+            <button
+              type="button"
+              className={viewMode === 'graph' ? 'mode-button active' : 'mode-button'}
+              onClick={() => setViewMode('graph')}
+            >
+              Graph
+            </button>
+            <button
+              type="button"
+              className={viewMode === 'query' ? 'mode-button active' : 'mode-button'}
+              onClick={() => setViewMode('query')}
+            >
+              Query
+            </button>
+          </div>
 
           {viewMode === 'graph' ? (
             <span className="app-title">Knowledge Graph</span>
+          ) : viewMode === 'query' ? (
+            <span className="app-title">Queries</span>
           ) : selectedNote ? (
             <>
               <input
@@ -193,6 +228,11 @@ export default function App() {
                 </div>
               ) : (
                 <>
+                  <PropertiesPanel
+                    note={selectedNote}
+                    onChange={(properties) => updateNote(selectedNote.id, { properties })}
+                    getTitles={getTitles}
+                  />
                   {mode === 'edit' ? (
                     <Editor
                       noteId={selectedNote.id}
@@ -210,6 +250,18 @@ export default function App() {
                     graph={graph}
                     onSelect={handleSelectNote}
                   />
+                  <TypedRelationsPanel
+                    noteId={selectedNote.id}
+                    notes={notes}
+                    relationBacklinks={relationBacklinks}
+                    onSelect={handleSelectNote}
+                  />
+                  <UnlinkedMentionsPanel
+                    note={selectedNote}
+                    notes={notes}
+                    onSelect={handleSelectNote}
+                    onLinkAll={handleLinkAllMentions}
+                  />
                 </>
               )}
             </div>
@@ -222,6 +274,10 @@ export default function App() {
                 onCreateNoteAt={createNote}
                 onLinkNotes={handleLinkNotes}
               />
+            </div>
+
+            <div className={viewMode === 'query' ? 'view-pane' : 'view-pane hidden'}>
+              <QueryView notes={notes} onOpenNote={handleOpenNoteFromGraph} getTitles={getTitles} />
             </div>
           </>
         )}
